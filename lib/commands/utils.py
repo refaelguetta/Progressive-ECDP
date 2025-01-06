@@ -77,3 +77,13 @@ def load_saved_options(root_dir, name):
 
     config_path = result_dir / "config.yaml"
     return read_options(config_path)
+
+def load_saved_options_cascade(root_dir, name, factor=None):
+    if factor:
+        name = f"{name}-factor-{factor}"
+    result_dir = root_dir / "results" / name
+    if not result_dir.is_dir():
+        raise FileNotFoundError(f"Result directory not found: {result_dir}")
+
+    config_path = result_dir / "config.yaml"
+    return read_options(config_path)

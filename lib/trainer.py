@@ -19,6 +19,7 @@ from .model import make_model
 from .model.discriminator import VGGDiscriminator
 from .model.percep import VGGPercepLoss
 from .utils import LazyValues, sample_to_device
+from pathlib import Path  
 
 
 def get_number_of_parameters(model):
@@ -451,6 +452,10 @@ class Trainer:
                         / f"{idx:02d}.png"
                     )
                     save_image(gen_diff[idx - idx_base], save_path)
+                if hasattr(self, "output_data_dir") and self.output_data_dir:
+                    for idx in range(idx_base, idx_base + image.shape[0]):
+                        save_path = self.output_data_dir / f"{idx:02d}.png"
+                        save_image(gen_diff[idx - idx_base], save_path)
                 idx_base += image.shape[0]
 
         statistics = {
@@ -464,6 +469,37 @@ class Trainer:
             weight=total_count,
             print_to_stderr=True,
         )
+
+    def test_cascaded(self, input_dir, output_base_dir, trainer_options, scale_factors, save_images=False):
+
+        input_data_dir = Path(input_dir)
+
+        for factor, options in zip(scale_factors, trainer_options):
+            print(f"\n--- Testing model for scale factor: {factor} ---")
+
+            self.options = options
+
+            output_data_dir = Path(output_base_dir) / f"factor-{factor}"
+            output_data_dir.mkdir(parents=True, exist_ok=True)
+
+            print(f"Input data directory: {input_data_dir}")
+
+            self.test_dataset.result_dir = self.options.train.result_dir / f"factor-{factor}"
+
+            print(f"Output data directory: {output_data_dir}")
+
+            self.output_data_dir = output_data_dir
+
+            self.test_one(save_images=save_images)
+
+            input_data_dir = output_data_dir
+
+            if hasattr(self, "output_data_dir"):
+                delattr(self, "output_data_dir")
+
+        print(f"Testing cascaded models completed. Final results saved in {output_base_dir}")
+
+
 
     def save_state(self, epoch):
         if self.rank == 0:
